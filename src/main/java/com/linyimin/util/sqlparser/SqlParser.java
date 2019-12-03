@@ -1,13 +1,11 @@
 package com.linyimin.util.sqlparser;
 
 import com.alibaba.druid.sql.SQLUtils;
-import com.alibaba.druid.sql.ast.SQLLimit;
-import com.alibaba.druid.sql.ast.SQLOrderBy;
-import com.alibaba.druid.sql.ast.SQLOrderingSpecification;
-import com.alibaba.druid.sql.ast.SQLStatement;
+import com.alibaba.druid.sql.ast.*;
 import com.alibaba.druid.sql.ast.statement.*;
 import com.alibaba.druid.util.JdbcConstants;
 
+import java.sql.SQLException;
 import java.util.*;
 
 import static com.linyimin.util.Constant.DESC;
@@ -109,7 +107,7 @@ public class SqlParser  {
      * name --> order
      * @return
      */
-    public List<Map<String, String>> parseOrder() {
+    public List<Map<String, String>> parseOrderBy() {
         List<Map<String, String>> list = new ArrayList<>();
         SQLSelect sqlSelect = (SQLSelect) visitor.getTableSourceAndSQLSelect().get(SQL_SELECT);
         SQLOrderBy orderBy = sqlSelect.getQueryBlock().getOrderBy();
@@ -124,6 +122,25 @@ public class SqlParser  {
                 list.add(map);
             }
         }
+        return list;
+    }
+
+    /**
+     * 解析Group by, 获取Group by的字段
+     * @return
+     */
+    public List<String> parseGroupBy() {
+        List<String> list = new ArrayList<>();
+        SQLSelect sqlSelect = (SQLSelect) visitor.getTableSourceAndSQLSelect().get(SQL_SELECT);
+        SQLSelectGroupByClause clause = sqlSelect.getQueryBlock().getGroupBy();
+        if (clause != null) {
+            List<SQLExpr> items = clause.getItems();
+            for (SQLExpr item : items) {
+                String name = aliasToReal(item.toString());
+                list.add(name);
+            }
+        }
+
         return list;
     }
 
@@ -154,7 +171,9 @@ public class SqlParser  {
     public static void  main(String [] args) throws Exception {
         String sql = "SELECT s.STUDENTID as test " +
                     ",s.STUDENTNAME,s.STUDENTCODE FROM tbl_student_info s ," +
-                "tbl_parents_student_map t WHERE s.STUDENTID=t.STUDENTID AND t.USERID='?' " +
+                "tbl_parents_student_map t WHERE s.STUDENTID=t.STUDENTID AND t.USERID='?'" +
+                "GROUP BY s.test, t.test1 " +
+                "HAVING count(test) > 11 " +
                 "ORDER BY expression DESC, test ASC LIMIT 10 OFFSET 2;";
         SqlParser parser = new SqlParser(sql);
 
@@ -166,8 +185,12 @@ public class SqlParser  {
         System.out.println(parser.parseFrom());
         System.out.println("------- from -----------");
 
+        System.out.println("------- groupBy --------");
+        System.out.println(parser.parseGroupBy());;
+        System.out.println("------- groupBy --------");
+
         System.out.println("------- order ----------");
-        System.out.println(parser.parseOrder());
+        System.out.println(parser.parseOrderBy());
         System.out.println("------- order ----------");
 
         System.out.println("------- limit -----------");
