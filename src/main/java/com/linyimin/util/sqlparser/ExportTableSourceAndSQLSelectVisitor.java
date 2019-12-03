@@ -8,6 +8,9 @@ import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlASTVisitorAdapter;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.linyimin.util.Constant.SQL_SELECT;
+import static com.linyimin.util.Constant.SQL_TABLE_SOURCE;
+
 /**
  * 自定义AST访问器
  * 获取SQLStatement及SQLTableSource的所有信息
@@ -20,23 +23,25 @@ public class ExportTableSourceAndSQLSelectVisitor extends MySqlASTVisitorAdapter
      */
     private HashMap<String, Object> map = new HashMap<>();
 
-    // alias --> SQLTableSource
+    // table name --> SQLTableSource
     private HashMap<String, SQLTableSource> aliasTable = new HashMap();
 
     // 获取SQLStatement
     public boolean visit(SQLSelectStatement x) {
-        map.put("sqlSelect", x.getSelect());
+        map.put(SQL_SELECT, x.getSelect());
         return true;
     }
 
     // 获取SQLTableSource
     public boolean visit(SQLExprTableSource x) {
-        aliasTable.put(x.getAlias(), x);
+        // 如果不存在别名,使用真实表名, 以免alias为null, 解析不完全
+        String name = x.getName().getSimpleName();
+        aliasTable.put(name, x);
         return true;
     }
 
     public Map<String, Object> getTableSourceAndSQLSelect() {
-        map.put("sqlTableSource", aliasTable);
+        map.put(SQL_TABLE_SOURCE, aliasTable);
         return map;
     }
 }
